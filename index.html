@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#090812">
+  <meta name="description" content="NOVA — a focused, local workspace for organizing and editing Lua source files.">
+  <title>NOVA — Purple Workspace</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090812;
+      --panel: #100e1b;
+      --panel-2: #151225;
+      --line: rgba(190, 164, 255, .12);
+      --muted: #89839e;
+      --text: #f4f0ff;
+      --purple: #a879ff;
+      --purple-2: #8051df;
+      --pink: #d28aff;
+      --green: #8de0b5;
+      --radius: 17px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at 76% 0%, rgba(117, 67, 194, .17), transparent 36rem),
+        radial-gradient(ellipse at 0% 65%, rgba(79, 49, 136, .11), transparent 32rem),
+        var(--bg);
+      font: 14px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { display: grid; grid-template-columns: 76px 260px minmax(0, 1fr); min-height: 100vh; }
+    .rail {
+      position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
+      align-items: center; gap: 13px; padding: 20px 0;
+      border-right: 1px solid var(--line); background: rgba(9, 8, 18, .82);
+    }
+    .brand-mark {
+      width: 39px; height: 39px; display: grid; place-items: center; margin-bottom: 22px;
+      border-radius: 13px; color: white; font-weight: 850; letter-spacing: -2px;
+      background: linear-gradient(145deg, #c69aff, #7541d2);
+      box-shadow: 0 8px 28px rgba(146, 91, 230, .27);
+    }
+    .rail-btn {
+      width: 43px; height: 43px; border: 1px solid transparent; border-radius: 13px;
+      color: #77718d; background: transparent; font-size: 18px; transition: .2s;
+    }
+    .rail-btn:hover, .rail-btn.active { color: #e7d9ff; background: rgba(164, 119, 255, .13); border-color: rgba(174, 132, 255, .17); }
+    .rail-spacer { flex: 1; }
+    .sidebar {
+      position: sticky; top: 0; height: 100vh; overflow-y: auto;
+      padding: 25px 18px; border-right: 1px solid var(--line); background: rgba(13, 11, 23, .68);
+    }
+    .workspace-label { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    .workspace-name { display: flex; align-items: center; gap: 10px; margin: 8px 0 30px; font-size: 15px; font-weight: 750; }
+    .workspace-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--purple); box-shadow: 0 0 14px var(--purple); }
+    .side-heading { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 10px; color: #817a96; font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .side-link {
+      display: flex; align-items: center; gap: 11px; width: 100%; padding: 10px 11px;
+      border: 1px solid transparent; border-radius: 10px; color: #aaa4bc; background: transparent;
+      text-align: left; font-size: 13px;
+    }
+    .side-link:hover, .side-link.active { color: #f0e8ff; background: rgba(159, 111, 255, .11); border-color: rgba(177, 137, 255, .13); }
+    .side-link .glyph { width: 17px; color: #a58bcf; text-align: center; }
+    .file-item { display: flex; align-items: center; gap: 9px; padding: 8px 10px 8px 13px; color: #aaa4bc; font-size: 12px; border-radius: 9px; }
+    .file-item.current { color: #e7d9ff; background: rgba(164, 119, 255, .09); }
+    .file-dot { width: 6px; height: 6px; border-radius: 50%; background: #a879ff; }
+    .side-bottom { margin-top: 35px; padding: 14px; border: 1px solid var(--line); border-radius: 13px; background: rgba(255,255,255,.025); }
+    .side-bottom strong { display: block; margin-bottom: 4px; font-size: 12px; }
+    .side-bottom p { margin: 0; color: var(--muted); font-size: 11px; }
+    main { min-width: 0; padding: 28px clamp(18px, 4vw, 54px) 50px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 42px; }
+    .crumb { color: var(--muted); font-size: 12px; }
+    .crumb b { color: #e7ddff; font-weight: 600; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .status { display: flex; align-items: center; gap: 7px; color: #a8a1b8; font-size: 11px; }
+    .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px rgba(141,224,181,.6); }
+    .avatar { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 10px; color: #eee3ff; background: #302148; font-size: 11px; font-weight: 800; }
+    .hero { max-width: 900px; margin: 0 auto 34px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid rgba(184, 143, 255, .2); border-radius: 999px; color: #c8adff; background: rgba(145, 92, 225, .09); font-size: 10px; font-weight: 750; letter-spacing: .11em; text-transform: uppercase; }
+    .eyebrow span { width: 6px; height: 6px; border-radius: 50%; background: #bd8cff; }
+    h1 { margin: 17px 0 10px; font-size: clamp(34px, 5vw, 54px); line-height: 1.06; letter-spacing: -.055em; }
+    h1 em { color: #bd91ff; font-style: normal; }
+    .hero-copy { max-width: 590px; margin: 0; color: #a29bb4; font-size: 14px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 23px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 15px; border: 1px solid var(--line); border-radius: 10px; color: #d8d0e8; background: rgba(255,255,255,.035); font-size: 12px; font-weight: 700; transition: .2s; }
+    .btn:hover { transform: translateY(-1px); border-color: rgba(190, 154, 255, .35); }
+    .btn.primary { border-color: transparent; color: white; background: linear-gradient(135deg, #a879ff, #7546d4); box-shadow: 0 8px 24px rgba(124, 75, 211, .2); }
+    .content-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(230px, .85fr); gap: 17px; max-width: 1100px; margin: 0 auto; }
+    .panel { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(145deg, rgba(23, 19, 37, .92), rgba(14, 12, 23, .92)); box-shadow: 0 16px 45px rgba(0,0,0,.12); }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+    .panel-title { font-size: 12px; font-weight: 750; }
+    .panel-sub { margin-top: 2px; color: var(--muted); font-size: 10px; }
+    .tiny-btn { padding: 6px 9px; border: 1px solid var(--line); border-radius: 8px; color: #b9aecb; background: rgba(255,255,255,.025); font-size: 10px; }
+    .editor-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; border-bottom: 1px solid var(--line); color: #8c849f; font-size: 10px; }
+    .editor-file { display: flex; align-items: center; gap: 8px; color: #c8b9e6; }
+    .editor-wrap { display: grid; grid-template-columns: 42px minmax(0, 1fr); min-height: 285px; padding: 14px 0; }
+    .line-numbers { padding: 0 11px 0 0; color: #5f5870; text-align: right; font: 12px/1.85 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; user-select: none; }
+    #codeEditor { width: 100%; min-height: 255px; resize: vertical; padding: 0 17px 0 0; border: 0; outline: 0; color: #d9d1e9; background: transparent; font: 12px/1.85 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; white-space: pre; overflow: auto; }
+    .editor-foot { display: flex; justify-content: space-between; gap: 10px; padding: 10px 15px; border-top: 1px solid var(--line); color: #777087; font-size: 10px; }
+    .right-stack { display: flex; flex-direction: column; gap: 17px; }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px; }
+    .stat { padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.02); }
+    .stat-label { color: #898198; font-size: 10px; }
+    .stat-value { margin-top: 5px; font-size: 22px; font-weight: 800; letter-spacing: -.04em; }
+    .stat-note { margin-top: 2px; color: #8e85a0; font-size: 9px; }
+    .project-list { padding: 6px 12px 12px; }
+    .project { display: flex; align-items: center; gap: 10px; padding: 11px 7px; border-bottom: 1px solid rgba(190,164,255,.07); }
+    .project:last-child { border: 0; }
+    .project-icon { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 10px; color: #c7a5ff; background: rgba(155,107,238,.09); }
+    .project-name { font-size: 11px; font-weight: 700; }
+    .project-meta { color: #817990; font-size: 9px; }
+    .project-tag { margin-left: auto; color: #8f83a5; font-size: 9px; }
+    .feature-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 1100px; margin: 17px auto 0; }
+    .feature { padding: 17px; border: 1px solid var(--line); border-radius: 14px; background: rgba(19,16,31,.62); }
+    .feature-icon { margin-bottom: 11px; color: #bd91ff; font-size: 17px; }
+    .feature strong { display: block; margin-bottom: 5px; font-size: 11px; }
+    .feature p { margin: 0; color: #8f879f; font-size: 10px; }
+    .section { display: none; max-width: 1100px; margin: 0 auto; }
+    .section.active { display: block; }
+    .section h2 { margin: 0 0 7px; font-size: 25px; letter-spacing: -.04em; }
+    .section-intro { margin: 0 0 22px; color: var(--muted); font-size: 12px; }
+    .empty-state { padding: 35px 20px; text-align: center; color: #9a91aa; }
+    .empty-state b { display: block; margin-bottom: 6px; color: #e6ddf5; }
+    .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+    .settings-row:last-child { border: 0; }
+    .settings-row b { display: block; font-size: 12px; }
+    .settings-row small { color: var(--muted); font-size: 10px; }
+    .toggle { width: 38px; height: 21px; position: relative; border: 0; border-radius: 20px; background: #393247; }
+    .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 15px; height: 15px; border-radius: 50%; background: #c4bacf; transition: .2s; }
+    .toggle.on { background: #8354d5; }
+    .toggle.on::after { left: 20px; background: white; }
+    footer { max-width: 1100px; margin: 28px auto 0; color: #625c70; font-size: 10px; text-align: center; }
+    .toast { position: fixed; right: 22px; bottom: 22px; padding: 11px 15px; border: 1px solid rgba(190,154,255,.25); border-radius: 11px; color: #eee5ff; background: #1b1530; box-shadow: 0 10px 35px #0008; opacity: 0; transform: translateY(8px); pointer-events: none; transition: .22s; font-size: 12px; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    @media (max-width: 950px) { .app { grid-template-columns: 65px 215px minmax(0,1fr); } .content-grid { grid-template-columns: 1fr; } .right-stack { display: grid; grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 680px) {
+      .app { display: block; padding-bottom: 66px; }
+      .rail { position: fixed; z-index: 5; top: auto; bottom: 0; width: 100%; height: 60px; flex-direction: row; justify-content: space-around; padding: 7px 12px; border-top: 1px solid var(--line); border-right: 0; background: rgba(10,8,18,.96); backdrop-filter: blur(18px); }
+      .brand-mark { width: 34px; height: 34px; margin: 0; font-size: 13px; }
+      .rail-btn { width: 39px; height: 39px; }
+      .rail-spacer { display: none; }
+      .sidebar { display: none; }
+      main { padding: 20px 15px 30px; }
+      .topbar { margin-bottom: 30px; }
+      .status { display: none; }
+      .hero { margin-bottom: 25px; }
+      .right-stack { display: flex; }
+      .feature-row { grid-template-columns: 1fr; }
+      .editor-wrap { min-height: 260px; }
+      #codeEditor { min-height: 230px; font-size: 11px; }
+      .crumb { font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav class="rail" aria-label="Primary navigation">
+      <div class="brand-mark">N</div>
+      <button class="rail-btn active" data-view="home" aria-label="Home" title="Home">⌂</button>
+      <button class="rail-btn" data-view="projects" aria-label="Projects" title="Projects">▤</button>
+      <button class="rail-btn" data-view="editor" aria-label="Editor" title="Editor">⌘</button>
+      <button class="rail-btn" data-view="settings" aria-label="Settings" title="Settings">⚙</button>
+      <div class="rail-spacer"></div>
+      <div class="avatar">N</div>
+    </nav>
+
+    <aside class="sidebar">
+      <div class="workspace-label">Workspace</div>
+      <div class="workspace-name"><span class="workspace-dot"></span> NOVA Studio <span style="margin-left:auto;color:#77718d">⌄</span></div>
+      <div class="side-heading">Overview</div>
+      <button class="side-link active" data-view="home"><span class="glyph">⌂</span> Dashboard</button>
+      <button class="side-link" data-view="projects"><span class="glyph">▤</span> All projects</button>
+      <button class="side-link" data-view="editor"><span class="glyph">⌘</span> Source editor</button>
+      <div class="side-heading">Library <span>＋</span></div>
+      <div class="file-item current"><span class="file-dot"></span> welcome.lua</div>
+      <div class="file-item"><span style="color:#a58bcf">◇</span> notes.lua</div>
+      <div class="file-item"><span style="color:#a58bcf">◇</span> sample.lua</div>
+      <div class="side-heading">Preferences</div>
+      <button class="side-link" data-view="settings"><span class="glyph">⚙</span> Settings</button>
+      <div class="side-bottom">
+        <strong>Local workspace</strong>
+        <p>Your source stays in your browser session. NOVA is an editor and organizer, not a game executor.</p>
+      </div>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <div class="crumb">NOVA Studio <span style="padding:0 7px;color:#554d65">/</span> <b id="breadcrumb">Dashboard</b></div>
+        <div class="top-actions"><span class="status">Workspace ready</span><div class="avatar">N</div></div>
+      </div>
+
+      <section class="section active" id="home">
+        <div class="hero">
+          <div class="eyebrow"><span></span> Your creative workspace</div>
+          <h1>Make room for<br><em>what's next.</em></h1>
+          <p class="hero-copy">A quiet, focused space to write, organize, and refine Lua source files. Keep your projects tidy and your ideas moving.</p>
+          <div class="hero-actions">
+            <button class="btn primary" data-view="editor">＋ Open editor</button>
+            <button class="btn" data-view="projects">Browse projects <span>↗</span></button>
+          </div>
+        </div>
+        <div class="content-grid">
+          <div class="panel">
+            <div class="panel-head"><div><div class="panel-title">Quick editor</div><div class="panel-sub">welcome.lua · local draft</div></div><button class="tiny-btn" id="copyCode">Copy source</button></div>
+            <div class="editor-toolbar"><span class="editor-file"><span style="color:#b58aff">◇</span> welcome.lua</span><span>Lua · UTF-8</span></div>
+            <div class="editor-wrap"><div class="line-numbers" id="lineNumbers">1<br>2<br>3<br>4<br>5<br>6</div><textarea id="codeEditor" spellcheck="false" aria-label="Lua source editor">-- Welcome to NOVA
+-- A focused place for your Lua projects.
+
+local project = {
+  name = "New idea",
+  status = "In progress"
+}
+
+print("Hello from NOVA!")</textarea></div>
+            <div class="editor-foot"><span id="editorStats">8 lines · 126 characters</span><span>Local draft</span></div>
+          </div>
+          <div class="right-stack">
+            <div class="panel">
+              <div class="panel-head"><div><div class="panel-title">Workspace overview</div><div class="panel-sub">A snapshot of your library</div></div><span style="color:#9d7ad0">✦</span></div>
+              <div class="stat-grid">
+                <div class="stat"><div class="stat-label">Projects</div><div class="stat-value">03</div><div class="stat-note">In your library</div></div>
+                <div class="stat"><div class="stat-label">Drafts</div><div class="stat-value">02</div><div class="stat-note">Ready to continue</div></div>
+                <div class="stat"><div class="stat-label">Workspace</div><div class="stat-value" style="font-size:17px">Local</div><div class="stat-note">Browser session</div></div>
+                <div class="stat"><div class="stat-label">Theme</div><div class="stat-value" style="font-size:17px">Violet</div><div class="stat-note">NOVA dark</div></div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-head"><div><div class="panel-title">Recent projects</div><div class="panel-sub">Pick up where you left off</div></div><button class="tiny-btn" data-view="projects">View all</button></div>
+              <div class="project-list">
+                <div class="project"><div class="project-icon">◇</div><div><div class="project-name">welcome.lua</div><div class="project-meta">Edited just now</div></div><span class="project-tag">Lua</span></div>
+                <div class="project"><div class="project-icon">⌘</div><div><div class="project-name">notes.lua</div><div class="project-meta">Personal notes</div></div><span class="project-tag">Lua</span></div>
+                <div class="project"><div class="project-icon">✧</div><div><div class="project-name">sample.lua</div><div class="project-meta">Starter file</div></div><span class="project-tag">Lua</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-row">
+          <div class="feature"><div class="feature-icon">⌘</div><strong>Focused editing</strong><p>A clean writing surface for Lua source, without clutter.</p></div>
+          <div class="feature"><div class="feature-icon">▤</div><strong>Project library</strong><p>Keep drafts and sample files together in one workspace.</p></div>
+          <div class="feature"><div class="feature-icon">◈</div><strong>Minimal by design</strong><p>A dark interface with subtle violet details and room to think.</p></div>
+        </div>
+      </section>
+
+      <section class="section" id="projects">
+        <h2>Your projects</h2><p class="section-intro">A simple home for your source files and working drafts.</p>
+        <div class="panel">
+          <div class="panel-head"><div><div class="panel-title">Project library</div><div class="panel-sub">3 items · sample workspace</div></div><button class="btn primary" id="newProject">＋ New draft</button></div>
+          <div class="project-list" id="allProjects">
+            <div class="project"><div class="project-icon">◇</div><div><div class="project-name">welcome.lua</div><div class="project-meta">Main workspace introduction</div></div><span class="project-tag">Lua source</span></div>
+            <div class="project"><div class="project-icon">⌘</div><div><div class="project-name">notes.lua</div><div class="project-meta">Personal notes and snippets</div></div><span class="project-tag">Lua source</span></div>
+            <div class="project"><div class="project-icon">✧</div><div><div class="project-name">sample.lua</div><div class="project-meta">Starter example</div></div><span class="project-tag">Lua source</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="editor">
+        <h2>Source editor</h2><p class="section-intro">Write and revise source text in a lightweight local editor.</p>
+        <div class="panel">
+          <div class="panel-head"><div><div class="panel-title">welcome.lua</div><div class="panel-sub">Unsaved browser-session draft</div></div><div style="display:flex;gap:7px"><button class="tiny-btn" id="downloadFile">Export .lua</button><button class="tiny-btn" id="clearEditor">Clear</button></div></div>
+          <div class="editor-toolbar"><span class="editor-file"><span style="color:#b58aff">◇</span> welcome.lua</span><span>Lua · Plain text</span></div>
+          <div class="editor-wrap" style="min-height:390px"><div class="line-numbers" id="editorLineNumbers">1</div><textarea id="fullEditor" spellcheck="false" aria-label="Full Lua source editor" style="min-height:360px">-- Welcome to NOVA
+-- A focused place for your Lua projects.
+
+local project = {
+  name = "New idea",
+  status = "In progress"
+}
+
+print("Hello from NOVA!")</textarea></div>
+          <div class="editor-foot"><span id="fullEditorStats">8 lines</span><span>Text editing only · No code execution</span></div>
+        </div>
+      </section>
+
+      <section class="section" id="settings">
+        <h2>Settings</h2><p class="section-intro">Small preferences for your NOVA workspace.</p>
+        <div class="panel">
+          <div class="settings-row"><div><b>Dark appearance</b><small>Keep the workspace in its dark violet theme.</small></div><button class="toggle on" aria-label="Dark appearance enabled"></button></div>
+          <div class="settings-row"><div><b>Editor line numbers</b><small>Show line numbers beside the source editor.</small></div><button class="toggle on" aria-label="Line numbers enabled"></button></div>
+          <div class="settings-row"><div><b>Word wrap</b><small>Wrap long lines inside the editor.</small></div><button class="toggle" aria-label="Word wrap disabled"></button></div>
+          <div class="settings-row"><div><b>About NOVA</b><small>Local source editor and project organizer. It does not run or inject code into games.</small></div><span style="color:#a98add;font-size:11px">v1.1 web</span></div>
+        </div>
+      </section>
+      <footer>NOVA Studio · A focused local workspace · Made for your next idea</footer>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script>
+    const sections = ["home", "projects", "editor", "settings"];
+    const labels = { home: "Dashboard", projects: "Projects", editor: "Source editor", settings: "Settings" };
+    const toast = document.getElementById("toast");
+    let toastTimer;
+    function notify(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+    function showView(view) {
+      if (!sections.includes(view)) return;
+      sections.forEach(id => document.getElementById(id).classList.toggle("active", id === view));
+      document.querySelectorAll("[data-view]").forEach(button => button.classList.toggle("active", button.dataset.view === view));
+      document.getElementById("breadcrumb").textContent = labels[view];
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    document.querySelectorAll("[data-view]").forEach(button => button.addEventListener("click", () => showView(button.dataset.view)));
+
+    const quick = document.getElementById("codeEditor");
+    const full = document.getElementById("fullEditor");
+    const sample = quick.value;
+    full.value = sample;
+    function stats(editor, lineId, statId) {
+      const lines = editor.value.split("\n").length;
+      const count = document.getElementById(lineId);
+      count.innerHTML = Array.from({length: lines}, (_, i) => i + 1).join("<br>");
+      document.getElementById(statId).textContent = lines + " lines · " + editor.value.length + " characters";
+    }
+    function sync(from, to, lineId, statId) {
+      to.value = from.value;
+      stats(to, lineId, statId);
+    }
+    quick.addEventListener("input", () => {
+      sync(quick, full, "editorLineNumbers", "fullEditorStats");
+      stats(quick, "lineNumbers", "editorStats");
+    });
+    full.addEventListener("input", () => {
+      sync(full, quick, "lineNumbers", "editorStats");
+      stats(full, "editorLineNumbers", "fullEditorStats");
+    });
+    stats(quick, "lineNumbers", "editorStats");
+    stats(full, "editorLineNumbers", "fullEditorStats");
+
+    document.getElementById("copyCode").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(quick.value); notify("Source copied to clipboard."); }
+      catch { notify("Clipboard access is unavailable in this browser."); }
+    });
+    document.getElementById("downloadFile").addEventListener("click", () => {
+      const blob = new Blob([full.value], {type: "text/plain;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url; link.download = "welcome.lua"; link.click();
+      URL.revokeObjectURL(url);
+      notify("Exported welcome.lua.");
+    });
+    document.getElementById("clearEditor").addEventListener("click", () => {
+      full.value = ""; quick.value = "";
+      stats(full, "editorLineNumbers", "fullEditorStats");
+      stats(quick, "lineNumbers", "editorStats");
+      notify("Editor cleared.");
+    });
+    document.getElementById("newProject").addEventListener("click", () => {
+      const name = "untitled-" + (document.querySelectorAll("#allProjects .project").length + 1) + ".lua";
+      const item = document.createElement("div");
+      item.className = "project";
+      item.innerHTML = '<div class="project-icon">◇</div><div><div class="project-name"></div><div class="project-meta">New local draft</div></div><span class="project-tag">Lua source</span>';
+      item.querySelector(".project-name").textContent = name;
+      document.getElementById("allProjects").appendChild(item);
+      notify("Created " + name + " in this preview.");
+    });
+    document.querySelectorAll(".toggle").forEach(toggle => toggle.addEventListener("click", () => {
+      toggle.classList.toggle("on");
+      toggle.setAttribute("aria-pressed", toggle.classList.contains("on") ? "true" : "false");
+      notify("Preference updated for this preview.");
+    }));
+  </script>
+</body>
+</html>
