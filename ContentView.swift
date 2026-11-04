@@ -39,7 +39,7 @@ private enum NovaPalette {
     static let background = Color(red: 0.035, green: 0.027, blue: 0.060)
     static let surface = Color(red: 0.085, green: 0.065, blue: 0.125)
     static let elevated = Color(red: 0.125, green: 0.090, blue: 0.185)
-    static let purple = Color(red: 0. sixty, green: 0.36, blue: 0.98)
+    static let purple = Color(red: 0.60, green: 0.36, blue: 0.98)
     static let lavender = Color(red: 0.72, green: 0.61, blue: 1.0)
     static let muted = Color.white.opacity(0.48)
 }
